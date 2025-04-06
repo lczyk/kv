@@ -17,13 +17,18 @@ KV_FILE = __tests_dir__ / "kv.sqlite"
 
 @pytest.fixture
 def kv() -> Iterator[KV]:
-    kv_file = KV_FILE
-    if os.path.exists(kv_file):
-        kv_file.unlink(missing_ok=True)
-    kv_instance = KV(kv_file)
-    yield kv_instance
-    kv_instance.close()  # close the connection
-    kv_file.unlink(missing_ok=True)
+    if os.path.exists(KV_FILE):
+        KV_FILE.unlink(missing_ok=True)
+    kv_instance = KV(KV_FILE)
+    try:
+        yield kv_instance
+    finally:
+        kv_instance.close()
+        try:  # noqa: SIM105
+            KV_FILE.unlink(missing_ok=True)
+        except Exception:
+            # File may be locked by another process
+            pass
 
 
 def test_new_kv_is_empty(kv: KV) -> None:
