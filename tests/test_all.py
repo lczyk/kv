@@ -8,6 +8,7 @@ from threading import Thread
 import mock
 from pathlib import Path
 
+import os
 import kv
 
 try:
@@ -15,6 +16,7 @@ try:
 except ImportError:
     from Queue import Queue
 
+from conftest import __tests_dir__
 
 class KVTest(unittest.TestCase):
 
@@ -177,30 +179,33 @@ class KVPersistenceTest(unittest.TestCase):
 class CLITest(unittest.TestCase):
 
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp())
-        self.kv_file = str(self.tmp / 'kv.sqlite')
+        # self.tmp = Path(tempfile.mkdtemp())
+        # self.kv_file = str(self.tmp / 'kv.sqlite')
+        self.kv_file = str(__tests_dir__ / 'kv.sqlite')
         self.kv = kv.KV(self.kv_file)
-        self.addCleanup(rmtree, self.tmp)
+        self.addCleanup(os.remove, self.kv_file)
 
     def _run(self, *args):
-        with mock.patch('sys.argv', ['kv', self.kv_file] + list(args)):
-            with mock.patch('kv.print') as mprint:
-                with mock.patch('sys.stderr') as mstderr:
-                    mstderr.write = mprint
-                    retcode = 0
-                    output = ''
-                    try:
-                        kv.main()
-                    except SystemExit as e:
-                        retcode = e.code
-                    if mprint.called:
-                        output = mprint.call_args[0][0]
-                    return retcode, output
+        with (
+            mock.patch('kv.kv.print') as mprint,
+            mock.patch('sys.stderr') as mstderr,
+        ):
+            mstderr.write = mprint
+            retcode = 0
+            output = ''
+            try:
+                kv.kv.main(args=(self.kv_file, *args))
+            except SystemExit as e:
+                retcode = e.code
+            if mprint.called:
+                output = mprint.call_args[0][0]
+            return retcode, output
 
     def test_get(self):
         assert 'foo' not in self.kv
         self.assertEqual(self._run('get', 'foo'), (1, ''))
         self.kv['foo'] = 'test'
+        assert 'foo' in self.kv
         self.assertEqual(self._run('get', 'foo'), (0, 'test'))
 
     def test_set(self):

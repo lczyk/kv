@@ -2,18 +2,10 @@ from __future__ import print_function
 import argparse
 import sqlite3
 import sys
-try:
-    from collections import MutableMapping
-except ImportError:
-    # python3.10 ended this import, try from the new home
-    from collections.abc import MutableMapping
+from collections.abc import MutableMapping
 
 from contextlib import contextmanager
-try:
-    import simplejson as json
-except ImportError:
-    import json  # noqa
-
+import json
 
 class KV(MutableMapping):
 
@@ -75,7 +67,7 @@ class KV(MutableMapping):
                 self._execute('COMMIT')
 
 
-def main():
+def main(args=None):
     parser = argparse.ArgumentParser(
         description="Key-value store backed by SQLite.")
     parser.add_argument('db_uri', help='Database filename or URI')
@@ -93,7 +85,12 @@ def main():
     parser_del = subparsers.add_parser('del', help='Delete a key')
     parser_del.add_argument('key')
 
-    opts = parser.parse_args()
+    opts = parser.parse_args(args)
+
+    if opts.command is None:
+        parser.print_help()
+        sys.exit(1)
+
     kv = KV(opts.db_uri, opts.table)
     if opts.command == 'get':
         if opts.key not in kv:
@@ -105,3 +102,6 @@ def main():
         if opts.key not in kv:
             sys.exit(1)
         del kv[opts.key]
+
+if __name__ == '__main__':
+    main()    
