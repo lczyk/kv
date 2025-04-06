@@ -16,10 +16,12 @@ from kv.kv import main as kv_main
 @pytest.fixture
 def kv() -> Iterator[KV]:
     kv_file = str(__tests_dir__ / "kv.sqlite")
+    if os.path.exists(kv_file):
+        os.remove(kv_file)
     kv_instance = KV(kv_file)
     yield kv_instance
-    del kv_instance  # delete the instance to close the connection
-    os.remove(kv_file)
+    kv_instance.close()  # close the connection
+    os.remove(kv_file)  # remove the file
 
 
 def test_new_kv_is_empty(kv: KV) -> None:

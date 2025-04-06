@@ -53,7 +53,7 @@ class KV(MutableMapping):
         timeout: float = 5.0,
     ) -> None:
         self._db_uri = str(db_uri)
-        self._db = sqlite3.connect(self._db_uri, timeout=timeout)
+        self._db: Union[sqlite3.Connection, None] = sqlite3.connect(self._db_uri, timeout=timeout)
         self._db.isolation_level = None
         self._table = table
         self._execute(f"CREATE TABLE IF NOT EXISTS {self._table} (key PRIMARY KEY, value)")
@@ -64,6 +64,8 @@ class KV(MutableMapping):
         return self._db_uri
 
     def _execute(self, sql: str, *args: Any) -> sqlite3.Cursor:
+        if self._db is None:
+            raise RuntimeError("Execute on closed database")
         return self._db.cursor().execute(sql, *args)
 
     @override
@@ -115,8 +117,14 @@ class KV(MutableMapping):
             if not self._locks:
                 self._execute("COMMIT")
 
-    def __del__(self) -> None:
-        self._db.close()
+    def close(self) -> None:
+        if self._db is not None:
+            self._db.close()
+            self._db = None
+        self._locks = 0
+        self._table = ""
+        self._db_uri = ""
+        self._execute = lambda *args: None  # type: ignore[assignment]
 
 
 def main(args: Union[list[str], None] = None) -> None:
