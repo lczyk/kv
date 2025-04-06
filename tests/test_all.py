@@ -12,10 +12,12 @@ from conftest import __tests_dir__
 from kv import KV
 from kv.kv import main as kv_main
 
+KV_FILE = __tests_dir__ / "kv.sqlite"
+
 
 @pytest.fixture
 def kv() -> Iterator[KV]:
-    kv_file = __tests_dir__ / "kv.sqlite"
+    kv_file = KV_FILE
     if os.path.exists(kv_file):
         kv_file.unlink(missing_ok=True)
     kv_instance = KV(kv_file)
@@ -132,22 +134,22 @@ def test_value_saved_with_unicode_key_is_retrieved(kv: KV) -> None:
 
 
 def test_value_saved_by_one_kv_client_is_read_by_another() -> None:
-    kv1 = KV(__tests_dir__ / "kv.sqlite")
+    kv1 = KV(KV_FILE)
     kv1["a"] = "b"
-    kv2 = KV(__tests_dir__ / "kv.sqlite")
+    kv2 = KV(KV_FILE)
     assert kv2["a"] == "b"
 
 
 def test_deep_structure_is_retrieved_the_same() -> None:
     value = {"a": ["b", {"c": 123}]}
-    kv1 = KV(__tests_dir__ / "kv.sqlite")
+    kv1 = KV(KV_FILE)
     kv1["a"] = deepcopy(value)
-    kv2 = KV(__tests_dir__ / "kv.sqlite")
+    kv2 = KV(KV_FILE)
     assert kv2["a"] == value
 
 
 def test_lock_fails_if_db_already_locked() -> None:
-    db_path = __tests_dir__ / "kv.sqlite"
+    db_path = KV_FILE
     q1: Queue[None] = Queue()
     q2: Queue[None] = Queue()
     kv2 = KV(db_path, timeout=0.1)
@@ -157,6 +159,7 @@ def test_lock_fails_if_db_already_locked() -> None:
         with kv1.lock():
             q1.put(None)
             q2.get()
+        kv1.close()
 
     th = Thread(target=locker)
     th.start()
@@ -174,22 +177,26 @@ def test_lock_fails_if_db_already_locked() -> None:
     finally:
         q2.put(None)
         th.join()
+        kv2.close()
 
 
 def test_lock_during_lock_still_saves_value() -> None:
-    kv1 = KV(__tests_dir__ / "kv.sqlite")
+    kv1 = KV(KV_FILE)
     with kv1.lock(), kv1.lock():
         kv1["a"] = "b"
     assert kv1.get("a") == "b"
+    kv1.close()
 
 
 def test_same_database_can_contain_two_namespaces() -> None:
-    kv1 = KV(__tests_dir__ / "kv.sqlite")
-    kv2 = KV(__tests_dir__ / "kv.sqlite", table="other")
+    kv1 = KV(KV_FILE)
+    kv2 = KV(KV_FILE, table="other")
     kv1["a"] = "b"
     kv2["a"] = "c"
     assert kv1.get("a") == "b"
     assert kv2.get("a") == "c"
+    kv1.close()
+    kv2.close()
 
 
 ################################################################################
