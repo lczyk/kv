@@ -4,24 +4,39 @@ import sqlite3
 import sys
 from collections.abc import MutableMapping
 from contextlib import contextmanager
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Iterator, Union
+
+if TYPE_CHECKING:
+    from typing_extensions import override
+else:
+    override = lambda x: x  # noqa: E731
 
 
 class KV(MutableMapping):
-    def __init__(self, db_uri=":memory:", table="data", timeout=5):
-        self._db = sqlite3.connect(db_uri, timeout=timeout)
+    def __init__(self, db_uri: Union[str, Path] = ":memory:", table: str = "data", timeout: float = 5.0) -> None:
+        self._db_uri = str(db_uri)
+        self._db = sqlite3.connect(self._db_uri, timeout=timeout)
         self._db.isolation_level = None
         self._table = table
         self._execute(f"CREATE TABLE IF NOT EXISTS {self._table} (key PRIMARY KEY, value)")
         self._locks = 0
 
-    def _execute(self, *args):
-        return self._db.cursor().execute(*args)
+    @property
+    def db_uri(self) -> str:
+        return self._db_uri
 
-    def __len__(self):
+    def _execute(self, sql: str, *args: Any) -> sqlite3.Cursor:
+        return self._db.cursor().execute(sql, *args)
+
+    @override
+    def __len__(self) -> int:
         [[n]] = self._execute(f"SELECT COUNT(*) FROM {self._table}")
-        return n
+        return n  # type: ignore[no-any-return]
 
-    def __getitem__(self, key):
+    @override
+    def __getitem__(self, key: Union[str, None]) -> Any:
+        q: tuple[str, tuple[Any, ...]]
         if key is None:
             q = (f"SELECT value FROM {self._table} WHERE key is NULL", ())
         else:
@@ -31,10 +46,12 @@ class KV(MutableMapping):
         else:
             raise KeyError
 
-    def __iter__(self):
+    @override
+    def __iter__(self) -> Iterator[str]:
         return (key for [key] in self._execute(f"SELECT key FROM {self._table}"))
 
-    def __setitem__(self, key, value):
+    @override
+    def __setitem__(self, key: Union[str, None], value: Any) -> None:
         jvalue = json.dumps(value)
         with self.lock():
             try:
@@ -42,14 +59,15 @@ class KV(MutableMapping):
             except sqlite3.IntegrityError:
                 self._execute(f"UPDATE {self._table} SET value=? WHERE key=?", (jvalue, key))
 
-    def __delitem__(self, key):
+    @override
+    def __delitem__(self, key: Union[str, None]) -> None:
         if key in self:
             self._execute(f"DELETE FROM {self._table} WHERE key=?", (key,))
         else:
             raise KeyError
 
     @contextmanager
-    def lock(self):
+    def lock(self) -> Iterator[None]:
         if not self._locks:
             self._execute("BEGIN IMMEDIATE TRANSACTION")
         self._locks += 1
@@ -61,7 +79,7 @@ class KV(MutableMapping):
                 self._execute("COMMIT")
 
 
-def main(args=None):
+def main(args: Union[list[str], None] = None) -> None:
     parser = argparse.ArgumentParser(description="Key-value store backed by SQLite.")
     parser.add_argument("db_uri", help="Database filename or URI")
     parser.add_argument("-t", "--table", nargs=1, default="data", help="Table name")
