@@ -36,9 +36,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterator, Union
 
 if TYPE_CHECKING:
-    from typing_extensions import override
+    from typing_extensions import Self, override
 else:
     override = lambda x: x  # noqa: E731
+    Self = object
 
 __version__ = "0.5.1"
 
@@ -126,6 +127,12 @@ class KV(MutableMapping):
         self._db_uri = ""
         self._execute = lambda *args: None  # type: ignore[assignment]
 
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, exc_type: type[BaseException], exc_value: BaseException, traceback: Any) -> None:
+        self.close()
+
 
 def main(args: Union[list[str], None] = None) -> None:
     parser = argparse.ArgumentParser(description="Key-value store backed by SQLite.")
@@ -149,17 +156,17 @@ def main(args: Union[list[str], None] = None) -> None:
         parser.print_help()
         sys.exit(1)
 
-    kv = KV(opts.db_uri, opts.table)
-    if opts.command == "get":
-        if opts.key not in kv:
-            sys.exit(1)
-        print(kv[opts.key])
-    elif opts.command == "set":
-        kv[opts.key] = opts.value
-    elif opts.command == "del":
-        if opts.key not in kv:
-            sys.exit(1)
-        del kv[opts.key]
+    with KV(opts.db_uri, opts.table) as kv:
+        if opts.command == "get":
+            if opts.key not in kv:
+                sys.exit(1)
+            print(kv[opts.key])
+        elif opts.command == "set":
+            kv[opts.key] = opts.value
+        elif opts.command == "del":
+            if opts.key not in kv:
+                sys.exit(1)
+            del kv[opts.key]
 
 
 __license__ = """

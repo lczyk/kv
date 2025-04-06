@@ -17,7 +17,7 @@ from kv.kv import main as kv_main
 def kv() -> Iterator[KV]:
     kv_file = __tests_dir__ / "kv.sqlite"
     if os.path.exists(kv_file):
-        os.remove(kv_file)
+        kv_file.unlink(missing_ok=True)
     kv_instance = KV(kv_file)
     yield kv_instance
     kv_instance.close()  # close the connection
