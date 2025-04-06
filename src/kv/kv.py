@@ -1,11 +1,9 @@
-from __future__ import print_function
 import argparse
+import json
 import sqlite3
 import sys
 from collections.abc import MutableMapping
-
 from contextlib import contextmanager
-import json
 
 
 class KV(MutableMapping):
@@ -13,46 +11,40 @@ class KV(MutableMapping):
         self._db = sqlite3.connect(db_uri, timeout=timeout)
         self._db.isolation_level = None
         self._table = table
-        self._execute(
-            "CREATE TABLE IF NOT EXISTS %s (key PRIMARY KEY, value)" % self._table
-        )
+        self._execute(f"CREATE TABLE IF NOT EXISTS {self._table} (key PRIMARY KEY, value)")
         self._locks = 0
 
     def _execute(self, *args):
         return self._db.cursor().execute(*args)
 
     def __len__(self):
-        [[n]] = self._execute("SELECT COUNT(*) FROM %s" % self._table)
+        [[n]] = self._execute(f"SELECT COUNT(*) FROM {self._table}")
         return n
 
     def __getitem__(self, key):
         if key is None:
-            q = ("SELECT value FROM %s WHERE key is NULL" % self._table, ())
+            q = (f"SELECT value FROM {self._table} WHERE key is NULL", ())
         else:
-            q = ("SELECT value FROM %s WHERE key=?" % self._table, (key,))
+            q = (f"SELECT value FROM {self._table} WHERE key=?", (key,))
         for row in self._execute(*q):
             return json.loads(row[0])
         else:
             raise KeyError
 
     def __iter__(self):
-        return (key for [key] in self._execute("SELECT key FROM %s" % self._table))
+        return (key for [key] in self._execute(f"SELECT key FROM {self._table}"))
 
     def __setitem__(self, key, value):
         jvalue = json.dumps(value)
         with self.lock():
             try:
-                self._execute(
-                    "INSERT INTO %s VALUES (?, ?)" % self._table, (key, jvalue)
-                )
+                self._execute(f"INSERT INTO {self._table} VALUES (?, ?)", (key, jvalue))
             except sqlite3.IntegrityError:
-                self._execute(
-                    "UPDATE %s SET value=? WHERE key=?" % self._table, (jvalue, key)
-                )
+                self._execute(f"UPDATE {self._table} SET value=? WHERE key=?", (jvalue, key))
 
     def __delitem__(self, key):
         if key in self:
-            self._execute("DELETE FROM %s WHERE key=?" % self._table, (key,))
+            self._execute(f"DELETE FROM {self._table} WHERE key=?", (key,))
         else:
             raise KeyError
 

@@ -1,14 +1,13 @@
+import os
 import sqlite3
 import tempfile
 import unittest
 from copy import deepcopy
+from pathlib import Path
 from shutil import rmtree
 from threading import Thread
+from unittest import mock
 
-import mock
-from pathlib import Path
-
-import os
 import kv
 
 try:
@@ -25,7 +24,7 @@ class KVTest(unittest.TestCase):
 
     def assertCountEqual(self, *args, **kwargs):
         try:
-            meth = super(KVTest, self).assertCountEqual
+            meth = super().assertCountEqual
         except AttributeError:
             meth = self.assertItemsEqual
         meth(*args, **kwargs)
@@ -149,9 +148,8 @@ class KVPersistenceTest(unittest.TestCase):
         th.start()
         try:
             q1.get()
-            with self.assertRaises(sqlite3.OperationalError) as cm1:
-                with kv2.lock():
-                    pass
+            with self.assertRaises(sqlite3.OperationalError) as cm1, kv2.lock():
+                pass
             self.assertEqual(str(cm1.exception), "database is locked")
             with self.assertRaises(sqlite3.OperationalError) as cm2:
                 kv2["a"] = "b"
@@ -162,9 +160,8 @@ class KVPersistenceTest(unittest.TestCase):
 
     def test_lock_during_lock_still_saves_value(self):
         kv1 = kv.KV(self.tmp / "kv.sqlite")
-        with kv1.lock():
-            with kv1.lock():
-                kv1["a"] = "b"
+        with kv1.lock(), kv1.lock():
+            kv1["a"] = "b"
         self.assertEqual(kv1["a"], "b")
 
     def test_same_database_can_contain_two_namespaces(self):
