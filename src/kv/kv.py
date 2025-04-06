@@ -1,3 +1,31 @@
+"""
+Single-file moduel with a simple key/value store.
+
+KV provides a dictionary-like interface on top of SQLite. Keys can be
+unicode strings, numbers or None. Values are stored as JSON.
+
+```python
+>>> from kv import KV
+>>> db = KV('/tmp/demo.kv')
+>>> db['hello'] = 'world'
+>>> db[42] = ['answer', 2, {'ultimate': 'question'}]
+>>> dict(db)
+{42: [u'answer', 2, {u'ultimate': u'question'}], u'hello': u'world'}
+```
+
+There is a locking facility that uses SQLite's transaction API::
+
+```python
+>>> with kv.lock():
+...   l = db[42]
+...   l += ['or is it?']
+...   db[42] = l
+```
+
+Original version written by Alex Morega, 2012-2025 (until 0.4.1).
+Adapted to single-file-module by Marcin Konowalczyk, 2024 (0.5.0+).
+"""
+
 import argparse
 import json
 import sqlite3
@@ -12,9 +40,18 @@ if TYPE_CHECKING:
 else:
     override = lambda x: x  # noqa: E731
 
+__version__ = "0.5.0"
+
+__all__ = ["KV"]
+
 
 class KV(MutableMapping):
-    def __init__(self, db_uri: Union[str, Path] = ":memory:", table: str = "data", timeout: float = 5.0) -> None:
+    def __init__(
+        self,
+        db_uri: Union[str, Path] = ":memory:",
+        table: str = "data",
+        timeout: float = 5.0,
+    ) -> None:
         self._db_uri = str(db_uri)
         self._db = sqlite3.connect(self._db_uri, timeout=timeout)
         self._db.isolation_level = None
@@ -113,6 +150,35 @@ def main(args: Union[list[str], None] = None) -> None:
             sys.exit(1)
         del kv[opts.key]
 
+
+__license__ = """
+Copyright 2012-2025 Alex Morega
+Copyright 2024 Marcin Konowalczyk
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+* Redistributions of source code must retain the above copyright notice,
+  this list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright
+  notice, this list of conditions and the following disclaimer in the
+  documentation and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+"""
 
 if __name__ == "__main__":
     main()
