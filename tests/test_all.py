@@ -18,8 +18,8 @@ except ImportError:
 
 from conftest import __tests_dir__
 
-class KVTest(unittest.TestCase):
 
+class KVTest(unittest.TestCase):
     def setUp(self):
         self.kv = kv.KV()
 
@@ -34,108 +34,107 @@ class KVTest(unittest.TestCase):
         self.assertEqual(len(self.kv), 0)
 
     def test_kv_with_two_items_has_size_two(self):
-        self.kv['a'] = 'x'
-        self.kv['b'] = 'x'
+        self.kv["a"] = "x"
+        self.kv["b"] = "x"
         self.assertEqual(len(self.kv), 2)
 
     def test_get_missing_value_raises_key_error(self):
         with self.assertRaises(KeyError):
-            self.kv['missing']
+            self.kv["missing"]
 
     def test_get_missing_value_returns_default(self):
-        self.assertIsNone(self.kv.get('missing'))
+        self.assertIsNone(self.kv.get("missing"))
 
     def test_get_missing_value_with_default_returns_argument(self):
         fallback = object()
-        self.assertEqual(self.kv.get('missing', fallback), fallback)
+        self.assertEqual(self.kv.get("missing", fallback), fallback)
 
     def test_contains_missing_value_is_false(self):
-        self.assertFalse('missing' in self.kv)
+        self.assertFalse("missing" in self.kv)
 
     def test_contains_existing_value_is_true(self):
-        self.kv['a'] = 'b'
-        self.assertTrue('a' in self.kv)
+        self.kv["a"] = "b"
+        self.assertTrue("a" in self.kv)
 
     def test_saved_item_is_retrieved_via_getitem(self):
-        self.kv['a'] = 'b'
-        self.assertEqual(self.kv['a'], 'b')
+        self.kv["a"] = "b"
+        self.assertEqual(self.kv["a"], "b")
 
     def test_saved_item_is_retrieved_via_get(self):
-        self.kv['a'] = 'b'
-        self.assertEqual(self.kv.get('a'), 'b')
+        self.kv["a"] = "b"
+        self.assertEqual(self.kv.get("a"), "b")
 
     def test_updated_item_is_retrieved_via_getitem(self):
-        self.kv['a'] = 'b'
-        self.kv['a'] = 'c'
-        self.assertEqual(self.kv['a'], 'c')
+        self.kv["a"] = "b"
+        self.kv["a"] = "c"
+        self.assertEqual(self.kv["a"], "c")
 
     def test_udpate_with_dictionary_items_retrieved_via_getitem(self):
-        self.kv.update({'a': 'b'})
-        self.assertEqual(self.kv['a'], 'b')
+        self.kv.update({"a": "b"})
+        self.assertEqual(self.kv["a"], "b")
 
     def test_delete_missing_item_raises_key_error(self):
         with self.assertRaises(KeyError):
-            del self.kv['missing']
+            del self.kv["missing"]
 
     def test_get_deleted_item_raises_key_error(self):
-        self.kv['a'] = 'b'
-        del self.kv['a']
+        self.kv["a"] = "b"
+        del self.kv["a"]
         with self.assertRaises(KeyError):
-            self.kv['a']
+            self.kv["a"]
 
     def test_iter_yields_keys(self):
-        self.kv['a'] = 'x'
-        self.kv['b'] = 'x'
-        self.kv['c'] = 'x'
-        self.assertCountEqual(self.kv, ['a', 'b', 'c'])
+        self.kv["a"] = "x"
+        self.kv["b"] = "x"
+        self.kv["c"] = "x"
+        self.assertCountEqual(self.kv, ["a", "b", "c"])
 
     def test_value_saved_with_int_key_is_retrieved_with_int_key(self):
-        self.kv[13] = 'a'
-        self.assertEqual(self.kv[13], 'a')
+        self.kv[13] = "a"
+        self.assertEqual(self.kv[13], "a")
 
     def test_value_saved_with_int_key_is_not_retrieved_with_str_key(self):
-        self.kv[13] = 'a'
-        self.assertIsNone(self.kv.get('13'))
+        self.kv[13] = "a"
+        self.assertIsNone(self.kv.get("13"))
 
     def test_value_saved_with_str_key_is_not_retrieved_with_int_key(self):
-        self.kv['13'] = 'a'
+        self.kv["13"] = "a"
         self.assertIsNone(self.kv.get(13))
 
     def test_value_saved_at_null_key_is_retrieved(self):
-        self.kv[None] = 'a'
-        self.assertEqual(self.kv[None], 'a')
+        self.kv[None] = "a"
+        self.assertEqual(self.kv[None], "a")
 
     def test_value_saved_with_float_key_is_retrieved_with_float_key(self):
-        self.kv[3.14] = 'a'
-        self.assertEqual(self.kv[3.14], 'a')
+        self.kv[3.14] = "a"
+        self.assertEqual(self.kv[3.14], "a")
 
     def test_value_saved_with_unicode_key_is_retrieved(self):
-        key = u'\u2022'
-        self.kv[key] = 'a'
-        self.assertEqual(self.kv[key], 'a')
+        key = "\u2022"
+        self.kv[key] = "a"
+        self.assertEqual(self.kv[key], "a")
 
 
 class KVPersistenceTest(unittest.TestCase):
-
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(rmtree, self.tmp)
 
     def test_value_saved_by_one_kv_client_is_read_by_another(self):
-        kv1 = kv.KV(self.tmp / 'kv.sqlite')
-        kv1['a'] = 'b'
-        kv2 = kv.KV(self.tmp / 'kv.sqlite')
-        self.assertEqual(kv2['a'], 'b')
+        kv1 = kv.KV(self.tmp / "kv.sqlite")
+        kv1["a"] = "b"
+        kv2 = kv.KV(self.tmp / "kv.sqlite")
+        self.assertEqual(kv2["a"], "b")
 
     def test_deep_structure_is_retrieved_the_same(self):
-        value = {'a': ['b', {'c': 123}]}
-        kv1 = kv.KV(self.tmp / 'kv.sqlite')
-        kv1['a'] = deepcopy(value)
-        kv2 = kv.KV(self.tmp / 'kv.sqlite')
-        self.assertEqual(kv2['a'], value)
+        value = {"a": ["b", {"c": 123}]}
+        kv1 = kv.KV(self.tmp / "kv.sqlite")
+        kv1["a"] = deepcopy(value)
+        kv2 = kv.KV(self.tmp / "kv.sqlite")
+        self.assertEqual(kv2["a"], value)
 
     def test_lock_fails_if_db_already_locked(self):
-        db_path = self.tmp / 'kv.sqlite'
+        db_path = self.tmp / "kv.sqlite"
         q1 = Queue()
         q2 = Queue()
         kv2 = kv.KV(db_path, timeout=0.1)
@@ -145,6 +144,7 @@ class KVPersistenceTest(unittest.TestCase):
             with kv1.lock():
                 q1.put(None)
                 q2.get()
+
         th = Thread(target=locker)
         th.start()
         try:
@@ -152,47 +152,46 @@ class KVPersistenceTest(unittest.TestCase):
             with self.assertRaises(sqlite3.OperationalError) as cm1:
                 with kv2.lock():
                     pass
-            self.assertEqual(str(cm1.exception), 'database is locked')
+            self.assertEqual(str(cm1.exception), "database is locked")
             with self.assertRaises(sqlite3.OperationalError) as cm2:
-                kv2['a'] = 'b'
-            self.assertEqual(str(cm2.exception), 'database is locked')
+                kv2["a"] = "b"
+            self.assertEqual(str(cm2.exception), "database is locked")
         finally:
             q2.put(None)
             th.join()
 
     def test_lock_during_lock_still_saves_value(self):
-        kv1 = kv.KV(self.tmp / 'kv.sqlite')
+        kv1 = kv.KV(self.tmp / "kv.sqlite")
         with kv1.lock():
             with kv1.lock():
-                kv1['a'] = 'b'
-        self.assertEqual(kv1['a'], 'b')
+                kv1["a"] = "b"
+        self.assertEqual(kv1["a"], "b")
 
     def test_same_database_can_contain_two_namespaces(self):
-        kv1 = kv.KV(self.tmp / 'kv.sqlite')
-        kv2 = kv.KV(self.tmp / 'kv.sqlite', table='other')
-        kv1['a'] = 'b'
-        kv2['a'] = 'c'
-        self.assertEqual(kv1['a'], 'b')
-        self.assertEqual(kv2['a'], 'c')
+        kv1 = kv.KV(self.tmp / "kv.sqlite")
+        kv2 = kv.KV(self.tmp / "kv.sqlite", table="other")
+        kv1["a"] = "b"
+        kv2["a"] = "c"
+        self.assertEqual(kv1["a"], "b")
+        self.assertEqual(kv2["a"], "c")
 
 
 class CLITest(unittest.TestCase):
-
     def setUp(self):
         # self.tmp = Path(tempfile.mkdtemp())
         # self.kv_file = str(self.tmp / 'kv.sqlite')
-        self.kv_file = str(__tests_dir__ / 'kv.sqlite')
+        self.kv_file = str(__tests_dir__ / "kv.sqlite")
         self.kv = kv.KV(self.kv_file)
         self.addCleanup(os.remove, self.kv_file)
 
     def _run(self, *args):
         with (
-            mock.patch('kv.kv.print') as mprint,
-            mock.patch('sys.stderr') as mstderr,
+            mock.patch("kv.kv.print") as mprint,
+            mock.patch("sys.stderr") as mstderr,
         ):
             mstderr.write = mprint
             retcode = 0
-            output = ''
+            output = ""
             try:
                 kv.kv.main(args=(self.kv_file, *args))
             except SystemExit as e:
@@ -202,22 +201,22 @@ class CLITest(unittest.TestCase):
             return retcode, output
 
     def test_get(self):
-        assert 'foo' not in self.kv
-        self.assertEqual(self._run('get', 'foo'), (1, ''))
-        self.kv['foo'] = 'test'
-        assert 'foo' in self.kv
-        self.assertEqual(self._run('get', 'foo'), (0, 'test'))
+        assert "foo" not in self.kv
+        self.assertEqual(self._run("get", "foo"), (1, ""))
+        self.kv["foo"] = "test"
+        assert "foo" in self.kv
+        self.assertEqual(self._run("get", "foo"), (0, "test"))
 
     def test_set(self):
-        assert 'foo' not in self.kv
-        self.assertEqual(self._run('set', 'foo', 'test'), (0, ''))
-        assert 'foo' in self.kv
-        self.assertEqual(self.kv['foo'], 'test')
+        assert "foo" not in self.kv
+        self.assertEqual(self._run("set", "foo", "test"), (0, ""))
+        assert "foo" in self.kv
+        self.assertEqual(self.kv["foo"], "test")
 
     def test_del(self):
-        assert 'foo' not in self.kv
-        self.assertEqual(self._run('del', 'foo'), (1, ''))
-        self.kv['foo'] = 'test'
-        assert 'foo' in self.kv
-        self.assertEqual(self._run('del', 'foo'), (0, ''))
-        assert 'foo' not in self.kv
+        assert "foo" not in self.kv
+        self.assertEqual(self._run("del", "foo"), (1, ""))
+        self.kv["foo"] = "test"
+        assert "foo" in self.kv
+        self.assertEqual(self._run("del", "foo"), (0, ""))
+        assert "foo" not in self.kv
