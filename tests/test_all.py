@@ -18,6 +18,7 @@ def kv() -> Iterator[KV]:
     kv_file = str(__tests_dir__ / "kv.sqlite")
     kv_instance = KV(kv_file)
     yield kv_instance
+    del kv_instance  # delete the instance to close the connection
     os.remove(kv_file)
 
 

@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 else:
     override = lambda x: x  # noqa: E731
 
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 
 __all__ = ["KV"]
 
@@ -114,6 +114,9 @@ class KV(MutableMapping):
             self._locks -= 1
             if not self._locks:
                 self._execute("COMMIT")
+
+    def __del__(self) -> None:
+        self._db.close()
 
 
 def main(args: Union[list[str], None] = None) -> None:
