@@ -1,7 +1,4 @@
 import sqlite3
-import time
-from copy import deepcopy
-from pathlib import Path
 from queue import Queue
 from threading import Thread
 from typing import Iterator
@@ -10,38 +7,20 @@ from unittest import mock
 import pytest
 from conftest import __tests_dir__
 
-from kv import KV
+from kv import KV, KVError
 from kv.kv import main as kv_main
 
 KV_FILE = __tests_dir__ / "kv.sqlite"
 
 
-def try_remove(path: Path, max_attempts: int = 5, sleep: float = 0.1) -> None:
-    """Try to remove a file with backoff."""
-    if not path.exists():
-        return
-    err = None
-    for _ in range(max_attempts):
-        try:
-            path.unlink(missing_ok=True)
-            return
-        except OSError as e:
-            err = e
-            time.sleep(sleep)
-
-    raise OSError(f"Failed to remove {path} after {max_attempts} attempts") from err
-
-
 @pytest.fixture
 def kv() -> Iterator[KV]:
-    # try_remove(KV_FILE)
     KV_FILE.unlink(missing_ok=True)
     kv_instance = KV(KV_FILE)
     try:
         yield kv_instance
     finally:
         kv_instance.close()
-        # try_remove(KV_FILE)
         KV_FILE.unlink(missing_ok=True)
 
 
@@ -160,6 +139,8 @@ def test_value_saved_by_one_kv_client_is_read_by_another() -> None:
 
 
 def test_deep_structure_is_retrieved_the_same() -> None:
+    from copy import deepcopy
+
     value = {"a": ["b", {"c": 123}]}
     with KV(KV_FILE) as kv1:
         kv1["a"] = deepcopy(value)
@@ -185,8 +166,6 @@ def test_lock_fails_if_db_already_locked() -> None:
     th.start()
     try:
         q1.get()
-        # with self.assertRaises(sqlite3.OperationalError) as cm1, kv2.lock():
-        # pass
         with (
             pytest.raises(sqlite3.OperationalError, match="database is locked"),
             kv2.lock(),
@@ -201,24 +180,21 @@ def test_lock_fails_if_db_already_locked() -> None:
 
 
 def test_lock_during_lock_still_saves_value() -> None:
-    kv1 = KV(KV_FILE)
-    with kv1.lock(), kv1.lock():
-        kv1["a"] = "b"
-    assert kv1.get("a") == "b"
-    kv1.close()
+    with KV(KV_FILE) as kv1:
+        with kv1.lock(), kv1.lock():
+            kv1["a"] = "b"
+        assert kv1.get("a") == "b"
 
 
 def test_same_database_can_contain_two_namespaces() -> None:
-    kv1 = KV(KV_FILE)
-    kv2 = KV(KV_FILE, table="other")
-    try:
+    with (
+        KV(KV_FILE) as kv1,
+        KV(KV_FILE, table="other") as kv2,
+    ):
         kv1["a"] = "b"
         kv2["a"] = "c"
         assert kv1.get("a") == "b"
         assert kv2.get("a") == "c"
-    finally:
-        kv1.close()
-        kv2.close()
 
 
 ################################################################################
@@ -263,3 +239,37 @@ def test_cli_del(kv: KV) -> None:
     assert "foo" in kv
     assert _run(kv.db_uri, "del", "foo") == (0, "")
     assert "foo" not in kv
+
+
+################################################################################
+
+
+def test_close_if_locked_default(kv: KV) -> None:
+    kv["a"] = "b"
+
+    with (
+        pytest.raises(KVError, match="[Dd]atabase is locked"),
+        kv.lock(),
+    ):
+        kv.close()
+
+
+def test_close_if_locked_abandon(kv: KV) -> None:
+    assert "a" not in kv
+    with kv.lock():
+        kv["a"] = "b"
+        kv.close(if_locked="abandon")
+
+    with KV(KV_FILE) as kv:
+        assert "a" not in kv
+
+
+def test_close_if_locked_flush(kv: KV) -> None:
+    assert "a" not in kv
+    with kv.lock():
+        kv["a"] = "b"
+        kv.close(if_locked="flush")
+
+    with KV(KV_FILE) as kv:
+        assert "a" in kv
+        assert kv["a"] == "b"

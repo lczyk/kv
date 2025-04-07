@@ -33,7 +33,7 @@ import sys
 from collections.abc import MutableMapping
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterator, Union
+from typing import TYPE_CHECKING, Any, Iterator, Literal, Union
 
 if TYPE_CHECKING:
     from typing_extensions import Self, override
@@ -43,7 +43,11 @@ else:
 
 __version__ = "0.5.1"
 
-__all__ = ["KV"]
+__all__ = ["KV", "KVError"]
+
+
+class KVError(Exception):
+    pass
 
 
 class KV(MutableMapping):
@@ -66,7 +70,7 @@ class KV(MutableMapping):
 
     def _execute(self, sql: str, *args: Any) -> sqlite3.Cursor:
         if self._db is None:
-            raise RuntimeError("Execute on closed database")
+            raise KVError("Execute on closed database")
         return self._db.cursor().execute(sql, *args)
 
     @override
@@ -118,11 +122,36 @@ class KV(MutableMapping):
             if not self._locks:
                 self._execute("COMMIT")
 
-    def close(self) -> None:
+    @property
+    def locked(self) -> bool:
+        return self._locks > 0
+
+    def close(self, if_locked: Literal["raise", "abandon", "flush"] = "raise") -> None:
+        """Close the database connection. `if_locked` specifies the behavior
+        when the database is locked and then closed:
+        - 'raise': raise an exception
+        - 'abandon': abandon the transaction and close the database
+        - 'flush': flush the transaction and close the database
+        After this call, the object is unusable. Consider using `with` statement
+        as opposed to calling `close()` explicitly: `with KV() as kv: ...`.
+        """
+        if self.locked:
+            if if_locked == "raise":
+                raise KVError("Database is locked")
+            elif if_locked == "abandon":
+                self._execute("ROLLBACK")
+            elif if_locked == "flush":
+                self._execute("COMMIT")
+            else:
+                raise ValueError(f"Invalid if_locked: {if_locked}")
+        self._locks = 0
+
+        # Actually close the database connection
         if self._db is not None:
             self._db.close()
             self._db = None
-        self._locks = 0
+
+        # Make oneself unusable
         self._table = ""
         self._db_uri = ""
         self._execute = lambda *args: None  # type: ignore[assignment]
