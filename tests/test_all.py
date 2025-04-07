@@ -5,9 +5,10 @@ from queue import Queue
 from threading import Thread
 from typing import Iterator
 from unittest import mock
-
+from pathlib import Path
 import pytest
 from conftest import __tests_dir__
+import time
 
 from kv import KV
 from kv.kv import main as kv_main
@@ -15,21 +16,32 @@ from kv.kv import main as kv_main
 KV_FILE = __tests_dir__ / "kv.sqlite"
 
 
+def try_remove_with_backoff(path: Path, max_attempts: int = 5) -> None:
+    """Try to remove a file with backoff."""
+    if not path.exists():
+        return
+    err = None
+    for _ in range(max_attempts):
+        try:
+            path.unlink(missing_ok=True)
+            break
+        except OSError as e:
+            err = e
+            time.sleep(0.1)
+
+    if err is not None:
+        raise err
+
+
 @pytest.fixture
 def kv() -> Iterator[KV]:
-    if os.path.exists(KV_FILE):
-        KV_FILE.unlink(missing_ok=True)
+    try_remove_with_backoff(KV_FILE)
     kv_instance = KV(KV_FILE)
     try:
         yield kv_instance
     finally:
         kv_instance.close()
-        try:  # noqa: SIM105
-            KV_FILE.unlink(missing_ok=True)
-        except Exception:
-            # File may be locked by another process
-            pass
-
+        try_remove_with_backoff(KV_FILE)
 
 def test_new_kv_is_empty(kv: KV) -> None:
     assert len(kv) == 0
@@ -196,12 +208,14 @@ def test_lock_during_lock_still_saves_value() -> None:
 def test_same_database_can_contain_two_namespaces() -> None:
     kv1 = KV(KV_FILE)
     kv2 = KV(KV_FILE, table="other")
-    kv1["a"] = "b"
-    kv2["a"] = "c"
-    assert kv1.get("a") == "b"
-    assert kv2.get("a") == "c"
-    kv1.close()
-    kv2.close()
+    try:
+        kv1["a"] = "b"
+        kv2["a"] = "c"
+        assert kv1.get("a") == "b"
+        assert kv2.get("a") == "c"
+    finally:
+        kv1.close()
+        kv2.close()
 
 
 ################################################################################
