@@ -1,14 +1,14 @@
-import os
 import sqlite3
+import time
 from copy import deepcopy
+from pathlib import Path
 from queue import Queue
 from threading import Thread
 from typing import Iterator
 from unittest import mock
-from pathlib import Path
+
 import pytest
 from conftest import __tests_dir__
-import time
 
 from kv import KV
 from kv.kv import main as kv_main
@@ -16,7 +16,7 @@ from kv.kv import main as kv_main
 KV_FILE = __tests_dir__ / "kv.sqlite"
 
 
-def try_remove_with_backoff(path: Path, max_attempts: int = 5) -> None:
+def try_remove(path: Path, max_attempts: int = 5, sleep: float = 0.1) -> None:
     """Try to remove a file with backoff."""
     if not path.exists():
         return
@@ -24,24 +24,26 @@ def try_remove_with_backoff(path: Path, max_attempts: int = 5) -> None:
     for _ in range(max_attempts):
         try:
             path.unlink(missing_ok=True)
-            break
+            return
         except OSError as e:
             err = e
-            time.sleep(0.1)
+            time.sleep(sleep)
 
-    if err is not None:
-        raise err
+    raise OSError(f"Failed to remove {path} after {max_attempts} attempts") from err
 
 
 @pytest.fixture
 def kv() -> Iterator[KV]:
-    try_remove_with_backoff(KV_FILE)
+    # try_remove(KV_FILE)
+    KV_FILE.unlink(missing_ok=True)
     kv_instance = KV(KV_FILE)
     try:
         yield kv_instance
     finally:
         kv_instance.close()
-        try_remove_with_backoff(KV_FILE)
+        # try_remove(KV_FILE)
+        KV_FILE.unlink(missing_ok=True)
+
 
 def test_new_kv_is_empty(kv: KV) -> None:
     assert len(kv) == 0
@@ -151,18 +153,18 @@ def test_value_saved_with_unicode_key_is_retrieved(kv: KV) -> None:
 
 
 def test_value_saved_by_one_kv_client_is_read_by_another() -> None:
-    kv1 = KV(KV_FILE)
-    kv1["a"] = "b"
-    kv2 = KV(KV_FILE)
-    assert kv2["a"] == "b"
+    with KV(KV_FILE) as kv1:
+        kv1["a"] = "b"
+        with KV(KV_FILE) as kv2:
+            assert kv2["a"] == "b"
 
 
 def test_deep_structure_is_retrieved_the_same() -> None:
     value = {"a": ["b", {"c": 123}]}
-    kv1 = KV(KV_FILE)
-    kv1["a"] = deepcopy(value)
-    kv2 = KV(KV_FILE)
-    assert kv2["a"] == value
+    with KV(KV_FILE) as kv1:
+        kv1["a"] = deepcopy(value)
+        with KV(KV_FILE) as kv2:
+            assert kv2["a"] == value
 
 
 def test_lock_fails_if_db_already_locked() -> None:
@@ -172,11 +174,12 @@ def test_lock_fails_if_db_already_locked() -> None:
     kv2 = KV(db_path, timeout=0.1)
 
     def locker() -> None:
-        kv1 = KV(db_path)
-        with kv1.lock():
+        with (
+            KV(db_path) as kv1,
+            kv1.lock(),
+        ):
             q1.put(None)
             q2.get()
-        kv1.close()
 
     th = Thread(target=locker)
     th.start()
