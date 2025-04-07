@@ -200,7 +200,7 @@ def main(args: Union[list[str], None] = None) -> None:
 
 __license__ = """
 Copyright 2012-2025 Alex Morega
-Copyright 2024 Marcin Konowalczyk
+Copyright 2025 Marcin Konowalczyk
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
