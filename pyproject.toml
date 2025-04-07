@@ -81,7 +81,7 @@ addopts = ["-s", "--tb=short", "--color=yes"]
 [dependency-groups]
 dev = [
     "black>=24.8.0",
-    "mock>=5.2.0",
+    "flit>=3.12.0",
     "mypy>=1.14.1",
     "pytest>=8.3.5",
     "ruff>=0.11.4",
