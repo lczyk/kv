@@ -1,5 +1,6 @@
 # KV - simple key/value store
 
+![GitHub Tag](https://img.shields.io/github/v/tag/MarcinKonowalczyk/kv?label=version)
 [![Single file](https://img.shields.io/badge/single%20file%20-%20purple)](https://raw.githubusercontent.com/MarcinKonowalczyk/kv/master/src/kv/kv.py)
 [![test](https://github.com/MarcinKonowalczyk/kv/actions/workflows/test.yml/badge.svg)](https://github.com/MarcinKonowalczyk/kv/actions/workflows/test.yml)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
