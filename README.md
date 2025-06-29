@@ -1,8 +1,8 @@
 # KV - simple key/value store
 
-![GitHub Tag](https://img.shields.io/github/v/tag/MarcinKonowalczyk/kv?label=version)
-[![Single file](https://img.shields.io/badge/single%20file%20-%20purple)](https://raw.githubusercontent.com/MarcinKonowalczyk/kv/master/src/kv/kv.py)
-[![test](https://github.com/MarcinKonowalczyk/kv/actions/workflows/test.yml/badge.svg)](https://github.com/MarcinKonowalczyk/kv/actions/workflows/test.yml)
+![GitHub Tag](https://img.shields.io/github/v/tag/lczyk/kv?label=version)
+[![Single file](https://img.shields.io/badge/single%20file%20-%20purple)](https://raw.githubusercontent.com/lczyk/kv/master/src/kv/kv.py)
+[![test](https://github.com/lczyk/kv/actions/workflows/test.yml/badge.svg)](https://github.com/lczyk/kv/actions/workflows/test.yml)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
@@ -43,7 +43,7 @@ cp ./src/kv/kv.py src/your_package/_kv.py
 Or even better, without checking out the repository:
 
 ```bash
-curl https://raw.githubusercontent.com/MarcinKonowalczyk/kv/master/src/kv/kv.py > src/your_package/_kv.py
+curl https://raw.githubusercontent.com/lczyk/kv/master/src/kv/kv.py > src/your_package/_kv.py
 ```
 
 Note that like this *you take ownership of the code* and you are responsible for keeping it up-to-date. If you change it that's fine (keep the license pls). That's the point here. You can also copy the code to your project and modify it as you wish.

@@ -1,5 +1,5 @@
 """
-Single-file moduel with a simple key/value store.
+Single-file module with a simple key/value store.
 
 KV provides a dictionary-like interface on top of SQLite. Keys can be
 unicode strings, numbers or None. Values are stored as JSON.
